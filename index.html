@@ -1,25 +1,31 @@
-// Korvaa koodin fetch-osa tällä:
-fetch(csvUrl).then(res => res.text()).then(csv => {
-    const lines = csv.split('\n').slice(1);
-    const grid = document.getElementById('grid');
-    grid.innerHTML = '';
-    
-    lines.forEach(line => {
-        const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, ''));
-        
-        // Etsintäfunktio: etsii solun sisältä http-linkkiä, jos koko solu ei ole linkki
-        const findLink = (str) => {
-            if (!str) return null;
-            const match = str.match(/(https?:\/\/[^\s"<>]+)/);
-            return match ? match[0] : null;
-        };
+fetch("https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/gviz/tq?tqx=out:json")
+    .then(res => res.text())
+    .then(text => {
+        const json = JSON.parse(text.substr(47).slice(0, -2));
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '';
 
-        if(cols.length > 5) {
-            const name = cols[1];
-            const racecard = findLink(cols[9]);
-            const video = findLink(cols[11]);
-            const results = findLink(cols[13]);
-            const earth = findLink(cols[14]);
+        json.table.rows.forEach(row => {
+            const c = row.c;
+            if (!c[1]) return;
+
+            // Apufunktio: Hakee joko suoran arvon tai kaavan (HYPERLINK) sisällön
+            const getLink = (cell) => {
+                if (!cell) return null;
+                // Jos solussa on kaava, yritetään poimia linkki sieltä
+                if (cell.f && cell.f.includes('HYPERLINK')) {
+                    const match = cell.f.match(/HYPERLINK\("([^"]+)"/);
+                    return match ? match[1] : null;
+                }
+                // Jos ei ole kaava, palautetaan arvo (jos se on URL)
+                return (cell.v && cell.v.toString().startsWith('http')) ? cell.v : null;
+            };
+
+            const name = c[1]?.v || "";
+            const racecard = getLink(c[9]);
+            const video = getLink(c[11]);
+            const results = getLink(c[13]);
+            const earth = getLink(c[14]);
 
             grid.innerHTML += `
                 <div class="card">
@@ -31,6 +37,5 @@ fetch(csvUrl).then(res => res.text()).then(csv => {
                         ${earth ? `<a href="${earth}" target="_blank" class="btn" style="background:#059669">Google Earth</a>` : ''}
                     </div>
                 </div>`;
-        }
+        });
     });
-});
