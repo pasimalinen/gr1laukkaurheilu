@@ -1,39 +1,27 @@
 <script>
-    fetch(csvUrl).then(res => res.text()).then(csv => {
+    fetch("https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/gviz/tq?tqx=out:csv")
+    .then(res => res.text())
+    .then(csv => {
         const lines = csv.split('\n').slice(1);
         const grid = document.getElementById('grid');
         grid.innerHTML = '';
-        
+
         lines.forEach(line => {
-            // Jaetaan rivi osiin
-            const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, ''));
+            // Tämä regex etsii kaikki linkit koko riviltä
+            const urls = line.match(/(https?:\/\/[^\s",]+)/g) || [];
+            const row = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, ''));
             
-            if(cols.length > 5) {
-                const name = cols[1];
-                const track = cols[3];
-                
-                // Funktio, joka etsii http-linkin tietystä solusta
-                const getLink = (colIndex) => {
-                    if (!cols[colIndex]) return null;
-                    const match = cols[colIndex].match(/(https?:\/\/[^"\s]+)/);
-                    return match ? match[0] : null;
-                };
-
-                const racecard = getLink(9);
-                const video = getLink(11);
-                const results = getLink(13);
-                const earth = getLink(14);
-
+            if(row.length > 5) {
+                // Tässä luotetaan siihen, että linkit löytyvät riviltä tässä järjestyksessä:
+                // urls[0] = Racecard, urls[1] = Video, urls[2] = Results, urls[3] = Earth
                 grid.innerHTML += `
                     <div class="card">
-                        <h3>${name}</h3>
-                        <p>📍 ${track}</p>
-                        <div>
-                            ${racecard ? `<a href="${racecard}" target="_blank" class="btn" style="background:#2563eb">Racecard</a>` : ''}
-                            ${video ? `<a href="${video}" target="_blank" class="btn" style="background:#dc2626">Video</a>` : ''}
-                            ${results ? `<a href="${results}" target="_blank" class="btn" style="background:#16a34a">Results</a>` : ''}
-                            ${earth ? `<a href="${earth}" target="_blank" class="btn" style="background:#059669">Google Earth</a>` : ''}
-                        </div>
+                        <h3>${row[1]}</h3>
+                        <p>📍 ${row[3]}</p>
+                        ${urls[0] ? `<a href="${urls[0]}" target="_blank" class="btn">Racecard</a>` : ''}
+                        ${urls[1] ? `<a href="${urls[1]}" target="_blank" class="btn">Video</a>` : ''}
+                        ${urls[2] ? `<a href="${urls[2]}" target="_blank" class="btn">Results</a>` : ''}
+                        ${urls[3] ? `<a href="${urls[3]}" target="_blank" class="btn">Earth</a>` : ''}
                     </div>`;
             }
         });
