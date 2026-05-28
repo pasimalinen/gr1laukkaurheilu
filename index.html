@@ -1,24 +1,2 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>GR1 Laukkaurheilu</title>
-</head>
-<body>
-    <h1>Laukkaurheilun tilanne</h1>
-    <div id="lista">Ladataan tietoja...</div>
-
-    <script>
-        const url = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/gviz/tq?tqx=out:csv";
-        
-        fetch(url)
-        .then(response => response.text())
-        .then(data => {
-            document.getElementById('lista').innerHTML = "Tiedot ladattu. Rivejä löytyi: " + data.split('\n').length;
-        })
-        .catch(err => {
-            document.getElementById('lista').innerHTML = "Virhe ladattaessa: " + err;
-        });
-    </script>
-</body>
-</html>
+<h1>Sivusto toimii!</h1>
+<p>Jos näet tämän, GitHub näyttää tiedostosi oikein.</p>
