@@ -1,58 +1,18 @@
 <!DOCTYPE html>
-<html lang="fi">
-<head>
-    <meta charset="UTF-8">
-    <title>GR1 Testi</title>
-</head>
+<html>
 <body>
-    <h1>Tila: <span id="status">Ladataan...</span></h1>
-    <div id="grid"></div>
+    <h1>Raakadata (JSON):</h1>
+    <pre id="data"></pre>
 
     <script>
-        const status = document.getElementById('status');
-        const grid = document.getElementById('grid');
         const url = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/gviz/tq?tqx=out:json";
-
         fetch(url)
             .then(res => res.text())
             .then(text => {
-                try {
-                    status.innerText = "Data vastaanotettu, prosessoidaan...";
-                    // Poistetaan Googlen JSON-kääre
-                    const json = JSON.parse(text.substr(47).slice(0, -2));
-                    
-                    if(!json.table.rows.length) {
-                        status.innerText = "Data on tyhjää.";
-                        return;
-                    }
-
-                    json.table.rows.forEach(row => {
-                        const c = row.c;
-                        const name = c[1]?.v || "Nimi puuttuu";
-                        
-                        // Yritetään poimia linkki kaavasta (f) tai tekstistä (v)
-                        const getL = (colIdx) => {
-                            const cell = c[colIdx];
-                            if (!cell) return null;
-                            if (cell.f && cell.f.includes('HYPERLINK')) {
-                                return cell.f.match(/HYPERLINK\("([^"]+)"/)?.[1];
-                            }
-                            return cell.v;
-                        };
-
-                        const racecard = getL(9);
-                        
-                        grid.innerHTML += `<div><h3>${name}</h3> ${racecard ? `<a href="${racecard}">Linkki toimii</a>` : 'Ei linkkiä'}</div>`;
-                    });
-                    status.innerText = "Valmis.";
-                } catch(e) {
-                    status.innerText = "Virhe: " + e.message;
-                    console.error(e);
-                }
+                document.getElementById('data').innerText = text;
+                console.log(text);
             })
-            .catch(e => {
-                status.innerText = "Verkkovirhe: " + e.message;
-            });
+            .catch(err => document.getElementById('data').innerText = "Virhe: " + err);
     </script>
 </body>
 </html>
