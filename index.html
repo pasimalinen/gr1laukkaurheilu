@@ -49,7 +49,7 @@
     </header>
     <div class="container">
         <div class="search-box"><input type="text" id="tableSearch" onkeyup="filterTable()" placeholder="Etsi kilpailua, maata, rataa..."></div>
-        <div id="loading">Ladataan tietoja suoraan Google Sheetsistä...</div>
+        <div id="loading">Haetaan ja ladataan 'GR1 2026' välilehden tietoja...</div>
         <div class="table-responsive" id="tableWrapper">
             <table id="raceTable">
                 <thead>
@@ -74,7 +74,8 @@
     <footer>&copy; 2026 GR1 Kiitolaukkaurheilu</footer>
 
     <script>
-        const csvUrl = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/export?format=csv";
+        // Pakotetaan Google antamaan nimenomaan "GR1 2026" -välilehden tiedot CSV-muodossa
+        const csvUrl = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/export?format=csv&sheet=GR1+2026";
 
         function parseCSV(text) {
             let lines = []; let row = [""]; let inQuotes = false;
@@ -102,7 +103,7 @@
                 const dataText = await response.text();
 
                 if (!dataText || dataText.includes('<!DOCTYPE html>') || dataText.includes('login')) {
-                    document.getElementById('loading').innerHTML = "<span style='color:#ef4444;'>VIRHE: Tarkista Google Sheetsin julkaisuasetukset.</span>";
+                    document.getElementById('loading').innerHTML = "<span style='color:#ef4444;'>VIRHE: Google ei anna dataa ulos. Varmista, että Sheetsin alalaidassa välilehden nimenä lukee täsmälleen 'GR1 2026' (yhdellä välilyönnillä).</span>";
                     return;
                 }
 
@@ -110,7 +111,8 @@
                 const tableBody = document.getElementById('tableBody');
                 tableBody.innerHTML = '';
 
-                let headerIndex = 0;
+                // Etsitään dynaamisesti se rivi, jolta sarakeotsikot alkavat
+                let headerIndex = -1;
                 for (let r = 0; r < rows.length; r++) {
                     let rowStr = rows[r].join('').toUpperCase();
                     if (rowStr.includes('RACE') || rowStr.includes('KILPAILU') || rowStr.includes('COUNTRY') || rowStr.includes('MAA')) {
@@ -119,39 +121,56 @@
                     }
                 }
 
+                // Jos tunnistus epäonnistuu, oletetaan että otsikot ovat rivillä 0
+                if (headerIndex === -1) headerIndex = 0;
                 let headerRow = rows[headerIndex];
                 
-                // Määritetään linkkien sarakkeiden paikat dynaamisesti
+                // Haetaan sarakkeiden paikat dynaamisesti nimien perusteella
+                let idxRace = 0, idxCountry = 1, idxTrack = 2, idxDate = 3, idxDist = 4, idxAge = 5, idxPurse = 6, idxClass = 7, idxWinner = 8, idxRating = 9;
                 let idxRacecard = -1, idxVideo = -1, idxResults = -1, idxEarth = -1;
 
                 for (let m = 0; m < headerRow.length; m++) {
                     let hStr = headerRow[m].toUpperCase().trim();
+                    if (hStr.includes("KILPAILU") || hStr.includes("RACE") || hStr.includes("LÄHTÖ")) idxRace = m;
+                    if (hStr.includes("COUNTRY") || hStr.includes("MAA")) idxCountry = m;
+                    if (hStr.includes("TRACK") || hStr.includes("RATA") || hStr.includes("LINK")) idxTrack = m;
+                    if (hStr.includes("DATE") || hStr.includes("PÄIVÄ")) idxDate = m;
+                    if (hStr.includes("TURF") || hStr.includes("DIRT") || hStr.includes("MATKA")) idxDist = m;
+                    if (hStr.includes("AGE") || hStr.includes("IKÄ")) idxAge = m;
+                    if (hStr.includes("PURSE") || hStr.includes("PALKINT")) idxPurse = m;
+                    if (hStr.includes("CLASS") || hStr.includes("LUOKKA")) idxClass = m;
+                    if (hStr.includes("WINNER") || hStr.includes("VOITTAJA")) idxWinner = m;
+                    if (hStr.includes("RATING") || hStr.includes("OR/RPR")) idxRating = m;
+                    
                     if (hStr.includes("RACECARD") || (hStr.includes("CARD") && !hStr.includes("VIDEO"))) idxRacecard = m;
                     if (hStr.includes("VIDEO")) idxVideo = m;
-                    if (hStr.includes("RESULT") || hStr.includes("RESULTS") || hStr.includes("TULOS") || hStr.includes("TULOKSET")) idxResults = m;
-                    if (hStr.includes("EARTH") || hStr.includes("GE LINK") || hStr.includes("MAP") || hStr.includes("KARTTA")) idxEarth = m;
+                    if (hStr.includes("RESULT") || hStr.includes("RESULTS") || hStr.includes("TULOS")) idxResults = m;
+                    if (hStr.includes("EARTH") || hStr.includes("GE LINK") || hStr.includes("MAP")) idxEarth = m;
                 }
 
-                // Mikäli tunnistus ei jostain syystä toimi, käytetään varmuuskopioina sarakkeita 10, 11, 12 ja 13
-                if (idxRacecard === -1) idxRacecard = 10;
-                if (idxVideo === -1) idxVideo = 11;
-                if (idxResults === -1) idxResults = 12;
-                if (idxEarth === -1) idxEarth = 13;
+                // Varmistetaan linkkisarakkeiden paikat jos haku ei löytänyt niitä
+                if (idxRacecard === -1) idxRacecard = idxRating + 1;
+                if (idxVideo === -1) idxVideo = idxRating + 2;
+                if (idxResults === -1) idxResults = idxRating + 3;
+                if (idxEarth === -1) idxEarth = idxRating + 4;
 
                 for (let i = headerIndex + 1; i < rows.length; i++) {
                     const row = rows[i];
-                    if (row.length < 3 || !row[0] || row[0].trim() === "") continue;
+                    
+                    // Tarkistetaan onko rivillä ylipäätään mitään järkevää dataa (vähintään maa tai kilpailu pitää löytyä)
+                    let checkText = (row[idxRace] || '') + (row[idxCountry] || '') + (row[idxTrack] || '');
+                    if (row.length < 3 || checkText.trim() === "") continue;
 
-                    const raceName = row[0]?.trim() || '';
-                    const country = row[1]?.trim() || '';
-                    const track = row[2]?.trim() || '';
-                    const date = row[3]?.trim() || '';
-                    const distanceSurface = row[4]?.trim() || '';
-                    const ageSex = row[5]?.trim() || '';
-                    const purse = row[6]?.trim() || '';
-                    const classGr = row[7]?.trim() || 'GR1';
-                    const winner = row[8]?.trim() || '-';
-                    const rating = row[9]?.trim() || '-';
+                    const raceName = row[idxRace]?.trim() || '-';
+                    const country = row[idxCountry]?.trim() || '-';
+                    const track = row[idxTrack]?.trim() || '-';
+                    const date = row[idxDate]?.trim() || '-';
+                    const distanceSurface = row[idxDist]?.trim() || '-';
+                    const ageSex = row[idxAge]?.trim() || '-';
+                    const purse = row[idxPurse]?.trim() || '-';
+                    const classGr = row[idxClass]?.trim() || 'GR1';
+                    const winner = row[idxWinner]?.trim() || '-';
+                    const rating = row[idxRating]?.trim() || '-';
                     
                     const racecardUrl = row[idxRacecard]?.trim() || '';
                     const videoUrl = row[idxVideo]?.trim() || '';
@@ -168,9 +187,8 @@
                     function cleanUrl(u) {
                         if (!u) return '';
                         u = u.replace(/"/g, '').trim();
-                        // Estetään otsikkosanojen tulkitseminen linkeiksi
                         let upper = u.toUpperCase();
-                        if (upper.includes('LINK') || upper === 'RACECARD' || upper === 'VIDEO' || upper === 'TULOKSET' || upper === 'RESULTS' || upper === 'EARTH') return '';
+                        if (upper.includes('LINK') || upper === 'RACECARD' || upper === 'VIDEO' || upper === 'RESULTS' || upper === 'RESULTS' || upper === 'EARTH') return '';
                         if (u.startsWith('http')) return u;
                         if (u.includes('.')) return 'https://' + u;
                         return '';
@@ -184,7 +202,7 @@
                     let mediaButtons = '';
                     if (rUrl) mediaButtons += `<a href="${rUrl}" target="_blank" class="btn btn-blue">Racecard</a> `;
                     if (vUrl) mediaButtons += `<a href="${vUrl}" target="_blank" class="btn btn-red">Video</a> `;
-                    if (resUrl) mediaButtons += `<a href="${resUrl}" target="_blank" class="btn btn-green">Tulokset</a> `;
+                    if (resUrl) mediaButtons += `<a href="${resUrl}" target="_blank" class="btn btn-green">Results</a> `;
                     if (eUrl) mediaButtons += `<a href="${eUrl}" target="_blank" class="btn btn-earth">Earth</a>`;
                     if (!mediaButtons) mediaButtons = '<span style="color:var(--text-muted); font-size:0.85rem;">-</span>';
 
@@ -194,7 +212,7 @@
                 }
 
                 if(tableBody.children.length === 0) {
-                    document.getElementById('loading').innerHTML = "<span style='color:#f59e0b;'>Data ladattiin, mutta rivit olivat tyhjiä.</span>";
+                    document.getElementById('loading').innerHTML = "<span style='color:#f59e0b;'>Data ladattiin, mutta koodi ei löytänyt riveiltä kilpailutietoja.</span>";
                 } else {
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('tableWrapper').style.display = 'block';
