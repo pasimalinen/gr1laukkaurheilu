@@ -290,13 +290,17 @@
     </footer>
 
     <script>
-        // Oikea ja suoraviivainen linkki CSV-tiedostoon
         const csvUrl = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/export?format=csv";
 
+        // Älykäs pilkkoja, joka tunnistaa sekä suomalaisen puolipiste-erottimen että pilkun
         function parseCSV(text) {
             let lines = [];
             let row = [""];
             let inQuotes = false;
+            
+            // Päätellään käytetäänkö erottimena pilkkua vai puolipistettä
+            let firstLine = text.split('\n')[0];
+            let delimiter = (firstLine.split(';').length > firstLine.split(',').length) ? ';' : ',';
 
             for (let i = 0; i < text.length; i++) {
                 let c = text[i];
@@ -304,7 +308,7 @@
                 if (c === '"') {
                     if (inQuotes && next === '"') { row[row.length - 1] += '"'; i++; }
                     else { inQuotes = !inQuotes; }
-                } else if (c === ',' && !inQuotes) {
+                } else if (c === delimiter && !inQuotes) {
                     row.push('');
                 } else if ((c === '\r' || c === '\n') && !inQuotes) {
                     if (c === '\r' && next === '\n') { i++; }
@@ -321,7 +325,7 @@
         async function fetchRaceData() {
             try {
                 const response = await fetch(csvUrl);
-                if (!response.ok) throw new Error('Verkkovirhe');
+                if (!response.ok) throw new Error('Verkkovirhe haussa');
                 const dataText = await response.text();
                 const rows = parseCSV(dataText);
                 
@@ -330,21 +334,20 @@
 
                 for (let i = 1; i < rows.length; i++) {
                     const row = rows[i];
-                    if (row.length < 5 || !row[0]) continue;
+                    if (row.length < 5 || !row[0] || row[0].trim() === "" || row[0].startsWith("Kilpailu")) continue;
 
-                    const raceName = row[0] || '';
-                    const country = row[1] || '';
-                    const track = row[2] || '';
-                    const date = row[3] || '';
-                    const distanceSurface = row[4] || '';
-                    const ageSex = row[5] || '';
-                    const purse = row[6] || '';
-                    const classGr = row[7] || 'GR1';
-                    const winner = row[8] || '-';
-                    const rating = row[9] || '-';
+                    // Sarakkeet: A=0, B=1, C=2, D=3, E=4, F=5, G=6, H=7, I=8, J=9, K=10, L=11, M=12, N=13
+                    const raceName = row[0] ? row[0].trim() : '';
+                    const country = row[1] ? row[1].trim() : '';
+                    const track = row[2] ? row[2].trim() : '';
+                    const date = row[3] ? row[3].trim() : '';
+                    const distanceSurface = row[4] ? row[4].trim() : '';
+                    const ageSex = row[5] ? row[5].trim() : '';
+                    const purse = row[6] ? row[6].trim() : '';
+                    const classGr = row[7] ? row[7].trim() : 'GR1';
+                    const winner = row[8] ? row[8].trim() : '-';
+                    const rating = row[9] ? row[9].trim() : '-';
                     
-                    // Korjattu sarakemäppäys (J, K, L, M) eli indeksit 9, 10, 11, 12
-                    // Mutta koska taulukossa voittaja/rating ovat sarakkeissa I ja J, linkit alkavat indeksistä 10
                     const racecardUrl = row[10] ? row[10].trim() : '';
                     const videoUrl = row[11] ? row[11].trim() : '';
                     const resultsUrl = row[12] ? row[12].trim() : '';
@@ -358,22 +361,23 @@
                     }
 
                     let mediaButtons = '';
-                    if (racecardUrl && (racecardUrl.startsWith('http') || racecardUrl.includes('.'))) {
-                        let url = racecardUrl.startsWith('http') ? racecardUrl : 'https://' + racecardUrl;
-                        mediaButtons += `<a href="${url}" target="_blank" class="btn btn-blue">Racecard</a> `;
+                    function cleanUrl(u) {
+                        if (!u) return '';
+                        u = u.replace(/"/g, '').trim();
+                        if (u.startsWith('http')) return u;
+                        if (u.includes('.')) return 'https://' + u;
+                        return '';
                     }
-                    if (videoUrl && (videoUrl.startsWith('http') || videoUrl.includes('.'))) {
-                        let url = videoUrl.startsWith('http') ? videoUrl : 'https://' + videoUrl;
-                        mediaButtons += `<a href="${url}" target="_blank" class="btn btn-red">Video</a> `;
-                    }
-                    if (resultsUrl && (resultsUrl.startsWith('http') || resultsUrl.includes('.'))) {
-                        let url = resultsUrl.startsWith('http') ? resultsUrl : 'https://' + resultsUrl;
-                        mediaButtons += `<a href="${url}" target="_blank" class="btn btn-green">Tulokset</a> `;
-                    }
-                    if (earthUrl && (earthUrl.startsWith('http') || earthUrl.includes('.'))) {
-                        let url = earthUrl.startsWith('http') ? earthUrl : 'https://' + earthUrl;
-                        mediaButtons += `<a href="${url}" target="_blank" class="btn btn-earth">Earth</a>`;
-                    }
+
+                    let rUrl = cleanUrl(racecardUrl);
+                    let vUrl = cleanUrl(videoUrl);
+                    let resUrl = cleanUrl(resultsUrl);
+                    let eUrl = cleanUrl(earthUrl);
+
+                    if (rUrl) mediaButtons += `<a href="${rUrl}" target="_blank" class="btn btn-blue">Racecard</a> `;
+                    if (vUrl) mediaButtons += `<a href="${vUrl}" target="_blank" class="btn btn-red">Video</a> `;
+                    if (resUrl) mediaButtons += `<a href="${resUrl}" target="_blank" class="btn btn-green">Tulokset</a> `;
+                    if (eUrl) mediaButtons += `<a href="${eUrl}" target="_blank" class="btn btn-earth">Earth</a>`;
 
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
@@ -397,7 +401,7 @@
 
             } catch (error) {
                 console.error(error);
-                document.getElementById('loading').innerText = 'Tietojen lataus epäonnistui. Varmista, että Google Sheets -jaon asetuksissa on "Kuka tahansa linkin saanut voi katsella".';
+                document.getElementById('loading').innerText = 'Tietojen lataus epäonnistui. Varmista, että Google Sheets on jaettu julkiseksi (Kuka tahansa linkin saanut voi katsella).';
             }
         }
 
