@@ -1,30 +1,16 @@
 <!DOCTYPE html>
 <html lang="fi">
-<head>
-    <meta charset="UTF-8">
-    <title>Diagnostiikka</title>
-    <style>
-        body { background: #0f172a; color: white; font-family: sans-serif; padding: 20px; }
-        .card { background: #1e293b; padding: 10px; margin-bottom: 10px; border: 1px solid red; }
-    </style>
-</head>
 <body>
-    <h1>Sarake-diagnostiikka (kopioi tämä tieto minulle)</h1>
-    <div id="debug"></div>
-
+    <h1>Tarkistetaan dataa... (katso Console / F12)</h1>
     <script>
-        const csvUrl = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/gviz/tq?tqx=out:csv";
+        const sheetId = '19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg';
+        const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
 
-        fetch(csvUrl).then(res => res.text()).then(text => {
-            const lines = text.split('\n').slice(1);
-            const debug = document.getElementById('debug');
-            
-            lines.forEach((line, index) => {
-                const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                // Tulostetaan vain ensimmäinen rivi nähdäksemme sarakkeiden järjestyksen
-                if (index === 0) {
-                    debug.innerHTML = `<div class="card"><strong>Rivin 1 sarakkeet:</strong><br>${cols.map((val, i) => `${i}: ${val}`).join('<br>')}</div>`;
-                }
+        fetch(url).then(res => res.text()).then(text => {
+            const json = JSON.parse(text.substr(47).slice(0, -2));
+            console.log("Koko data:", json.table.rows);
+            json.table.rows.forEach((row, i) => {
+                console.log("Rivi " + i + " tiedot:", row.c.map(cell => cell ? (cell.v || cell.f) : "tyhjä"));
             });
         });
     </script>
