@@ -3,37 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <title>GR1 Laukkaurheilu</title>
+    <style>
+        body { background: #0f172a; color: #f8fafc; font-family: sans-serif; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+        .card { background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; }
+        .btn { padding: 6px 10px; border-radius: 4px; text-decoration: none; font-size: 0.7rem; font-weight: bold; color: white; display: inline-block; margin: 2px; }
+    </style>
 </head>
 <body>
-    <div id="grid"></div>
+    <h1>GR1 Laukkaurheilu 2026</h1>
+    <div id="grid" class="grid"></div>
+
     <script>
         const csvUrl = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/gviz/tq?tqx=out:csv";
 
-        fetch(csvUrl)
-            .then(res => res.text())
-            .then(csv => {
-                const lines = csv.split('\n').slice(1);
-                const grid = document.getElementById('grid');
-                grid.innerHTML = '';
+        fetch(csvUrl).then(res => res.text()).then(csv => {
+            const lines = csv.split('\n').slice(1);
+            const grid = document.getElementById('grid');
+            
+            lines.forEach(line => {
+                // Etsitään kaikki rivin linkit
+                const urls = line.match(/(https?:\/\/[^",\s]+)/g) || [];
+                const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, ''));
                 
-                lines.forEach(line => {
-                    // Etsitään riviltä kaikki URL-osoitteet
-                    const urlMatch = line.match(/(https?:\/\/[^",]+)/g);
-                    const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                if(cols.length > 5) {
+                    const name = cols[1];
+                    const track = cols[3];
                     
-                    if(cols.length > 1) {
-                        const name = cols[1].replace(/"/g, '');
-                        // Etsitään juuri tähän riviin liittyvä linkki
-                        const link = urlMatch ? urlMatch[0] : null;
-
-                        grid.innerHTML += `
-                            <div class="card" style="margin:10px; padding:10px; border:1px solid #ccc;">
-                                <h3>${name}</h3>
-                                ${link ? `<a href="${link}" target="_blank">Avaa Racecard</a>` : 'Ei linkkiä'}
-                            </div>`;
-                    }
-                });
+                    grid.innerHTML += `
+                        <div class="card">
+                            <h3>${name}</h3>
+                            <p>📍 ${track}</p>
+                            <div>
+                                ${urls[0] ? `<a href="${urls[0]}" target="_blank" class="btn" style="background:#2563eb">Racecard</a>` : ''}
+                                ${urls[1] ? `<a href="${urls[1]}" target="_blank" class="btn" style="background:#dc2626">Video</a>` : ''}
+                                ${urls[2] ? `<a href="${urls[2]}" target="_blank" class="btn" style="background:#16a34a">Results</a>` : ''}
+                                ${urls[3] ? `<a href="${urls[3]}" target="_blank" class="btn" style="background:#059669">Google Earth</a>` : ''}
+                            </div>
+                        </div>`;
+                }
             });
+        });
     </script>
 </body>
 </html>
