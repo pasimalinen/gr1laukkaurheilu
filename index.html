@@ -8,46 +8,58 @@
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
         .card { background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; }
         .btn { padding: 6px 10px; border-radius: 4px; text-decoration: none; font-size: 0.7rem; font-weight: bold; color: white; display: inline-block; margin: 2px; }
+        .surf-t { color: #22c55e; font-weight: bold; }
+        .surf-d { color: #b45309; font-weight: bold; }
     </style>
 </head>
 <body>
     <h1>GR1 Kiitolaukkaurheilu 2026</h1>
-    <div id="grid" class="grid">Ladataan tietoja...</div>
+    <div id="grid">Ladataan...</div>
 
     <script>
         const csvUrl = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/gviz/tq?tqx=out:csv";
 
-        fetch(csvUrl).then(res => res.text()).then(csv => {
-            const lines = csv.split('\n').slice(1);
-            const grid = document.getElementById('grid');
-            grid.innerHTML = '';
-            
-            lines.forEach(line => {
-                const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, ''));
-                if(cols.length > 5) {
-                    // Tässä haetaan suoraan tekstimuotoiset linkit
+        fetch(csvUrl)
+            .then(res => res.text())
+            .then(text => {
+                const lines = text.split('\n');
+                const grid = document.getElementById('grid');
+                grid.innerHTML = '';
+                
+                // Käydään rivit läpi (skipataan otsikkorivi)
+                for (let i = 1; i < lines.length; i++) {
+                    const row = lines[i];
+                    if (!row.trim()) continue;
+                    
+                    const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, ''));
+                    
+                    // console.log(cols); // Tämä näyttää konsolissa tasan sen, mitä koodi lukee
+                    
                     const name = cols[1];
                     const track = cols[3];
-                    const fCol = cols[5] || "";
+                    const fCol = cols[5] || ""; 
                     const racecard = cols[9];
                     const video = cols[11];
                     const results = cols[13];
                     const earth = cols[14];
+                    
+                    const type = fCol.charAt(0).toUpperCase();
+                    const dist = fCol.substring(1).trim();
+                    const cls = type === 'T' ? 'surf-t' : 'surf-d';
 
                     grid.innerHTML += `
                         <div class="card">
                             <h3>${name}</h3>
-                            <p>📍 ${track} (${fCol})</p>
-                            <div class="btn-row">
-                                ${racecard.includes('http') ? `<a href="${racecard}" target="_blank" class="btn" style="background:#2563eb">Racecard</a>` : ''}
-                                ${video.includes('http') ? `<a href="${video}" target="_blank" class="btn" style="background:#dc2626">Video</a>` : ''}
-                                ${results.includes('http') ? `<a href="${results}" target="_blank" class="btn" style="background:#16a34a">Results</a>` : ''}
-                                ${earth.includes('http') ? `<a href="${earth}" target="_blank" class="btn" style="background:#059669">Google Earth</a>` : ''}
+                            <p>📍 <span class="${cls}">${type}</span> ${dist} | ${track}</p>
+                            <div>
+                                ${racecard ? `<a href="${racecard}" target="_blank" class="btn" style="background:#2563eb">Racecard</a>` : ''}
+                                ${video ? `<a href="${video}" target="_blank" class="btn" style="background:#dc2626">Video</a>` : ''}
+                                ${results ? `<a href="${results}" target="_blank" class="btn" style="background:#16a34a">Results</a>` : ''}
+                                ${earth ? `<a href="${earth}" target="_blank" class="btn" style="background:#059669">Google Earth</a>` : ''}
                             </div>
                         </div>`;
                 }
             });
-        });
     </script>
 </body>
 </html>
