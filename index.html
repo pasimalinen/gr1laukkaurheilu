@@ -1,55 +1,36 @@
-<!DOCTYPE html>
-<html lang="fi">
-<head>
-    <meta charset="UTF-8">
-    <title>GR1 Laukkaurheilu</title>
-    <style>
-        body { background: #0f172a; color: #f8fafc; font-family: sans-serif; padding: 20px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
-        .card { background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; }
-        .btn { padding: 6px 10px; border-radius: 4px; text-decoration: none; font-size: 0.7rem; font-weight: bold; color: white; display: inline-block; margin: 2px; }
-    </style>
-</head>
-<body>
-    <h1>GR1 Laukkaurheilu 2026</h1>
-    <div id="grid">Ladataan tietoja...</div>
+// Korvaa koodin fetch-osa tällä:
+fetch(csvUrl).then(res => res.text()).then(csv => {
+    const lines = csv.split('\n').slice(1);
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    
+    lines.forEach(line => {
+        const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, ''));
+        
+        // Etsintäfunktio: etsii solun sisältä http-linkkiä, jos koko solu ei ole linkki
+        const findLink = (str) => {
+            if (!str) return null;
+            const match = str.match(/(https?:\/\/[^\s"<>]+)/);
+            return match ? match[0] : null;
+        };
 
-    <script>
-        // Käytetään suoraa CSV-vientiä, mutta luotetaan siihen, että jos
-        // olet liittänyt linkit teksteinä, ne näkyvät tässä.
-        const csvUrl = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/gviz/tq?tqx=out:csv";
+        if(cols.length > 5) {
+            const name = cols[1];
+            const racecard = findLink(cols[9]);
+            const video = findLink(cols[11]);
+            const results = findLink(cols[13]);
+            const earth = findLink(cols[14]);
 
-        fetch(csvUrl).then(res => res.text()).then(csv => {
-            const lines = csv.split('\n').slice(1);
-            const grid = document.getElementById('grid');
-            grid.innerHTML = '';
-            
-            lines.forEach(line => {
-                const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, ''));
-                if(cols.length > 5) {
-                    // Tässä oletetaan, että sarakkeissa 9, 11, 13, 14 on nyt suorat URL-osoitteet
-                    // Jos ne ovat yhä tyhjiä, koodi ei löydä niitä.
-                    const name = cols[1];
-                    const track = cols[3];
-                    const racecard = cols[9];
-                    const video = cols[11];
-                    const results = cols[13];
-                    const earth = cols[14];
-
-                    grid.innerHTML += `
-                        <div class="card">
-                            <h3>${name}</h3>
-                            <p>📍 ${track}</p>
-                            <div>
-                                ${racecard && racecard.length > 5 ? `<a href="${racecard}" target="_blank" class="btn" style="background:#2563eb">Racecard</a>` : ''}
-                                ${video && video.length > 5 ? `<a href="${video}" target="_blank" class="btn" style="background:#dc2626">Video</a>` : ''}
-                                ${results && results.length > 5 ? `<a href="${results}" target="_blank" class="btn" style="background:#16a34a">Results</a>` : ''}
-                                ${earth && earth.length > 5 ? `<a href="${earth}" target="_blank" class="btn" style="background:#059669">Google Earth</a>` : ''}
-                            </div>
-                        </div>`;
-                }
-            });
-        });
-    </script>
-</body>
-</html>
+            grid.innerHTML += `
+                <div class="card">
+                    <h3>${name}</h3>
+                    <div class="btn-row">
+                        ${racecard ? `<a href="${racecard}" target="_blank" class="btn" style="background:#2563eb">Racecard</a>` : ''}
+                        ${video ? `<a href="${video}" target="_blank" class="btn" style="background:#dc2626">Video</a>` : ''}
+                        ${results ? `<a href="${results}" target="_blank" class="btn" style="background:#16a34a">Results</a>` : ''}
+                        ${earth ? `<a href="${earth}" target="_blank" class="btn" style="background:#059669">Google Earth</a>` : ''}
+                    </div>
+                </div>`;
+        }
+    });
+});
