@@ -96,7 +96,7 @@
             background-color: var(--card-bg);
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            display: none; /* Näytetään vasta kun data on ladattu */
+            display: none;
         }
 
         table {
@@ -290,9 +290,9 @@
     </footer>
 
     <script>
-        // Sinun antamasi virallinen julkinen CSV-osoite Google Sheetsistä
-   const csvUrl = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/export?format=csv";     
-        // Funktio CSV:n pilkkomiseen rivit huomioiden (käsittelee lainausmerkit oikein)
+        // Oikea ja suoraviivainen linkki CSV-tiedostoon
+        const csvUrl = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/export?format=csv";
+
         function parseCSV(text) {
             let lines = [];
             let row = [""];
@@ -318,22 +318,20 @@
             return lines;
         }
 
-        // Haetaan data Sheetsistä kun sivu latautuu
         async function fetchRaceData() {
             try {
                 const response = await fetch(csvUrl);
+                if (!response.ok) throw new Error('Verkkovirhe');
                 const dataText = await response.text();
                 const rows = parseCSV(dataText);
                 
                 const tableBody = document.getElementById('tableBody');
-                tableBody.innerHTML = ''; // Tyhjennetään pohja
+                tableBody.innerHTML = '';
 
-                // Aloitetaan riviltä 1 (ohitetaan otsikkorivi)
                 for (let i = 1; i < rows.length; i++) {
                     const row = rows[i];
-                    if (row.length < 5 || !row[0]) continue; // Ohitetaan tyhjät rivit
+                    if (row.length < 5 || !row[0]) continue;
 
-                    // Sarakkeiden mäppäys taulukostasi:
                     const raceName = row[0] || '';
                     const country = row[1] || '';
                     const track = row[2] || '';
@@ -345,13 +343,13 @@
                     const winner = row[8] || '-';
                     const rating = row[9] || '-';
                     
-                    // Linkit (Sarakkeet K, L, M, N eli indeksit 10, 11, 12, 13)
+                    // Korjattu sarakemäppäys (J, K, L, M) eli indeksit 9, 10, 11, 12
+                    // Mutta koska taulukossa voittaja/rating ovat sarakkeissa I ja J, linkit alkavat indeksistä 10
                     const racecardUrl = row[10] ? row[10].trim() : '';
                     const videoUrl = row[11] ? row[11].trim() : '';
                     const resultsUrl = row[12] ? row[12].trim() : '';
                     const earthUrl = row[13] ? row[13].trim() : '';
 
-                    // Luodaan alustabadge (Turf vs Dirt)
                     let surfaceBadge = distanceSurface;
                     if (distanceSurface.toUpperCase().includes('(T)') || distanceSurface.toUpperCase().includes('TURF')) {
                         surfaceBadge = `<span class="badge badge-turf">${distanceSurface}</span>`;
@@ -359,27 +357,24 @@
                         surfaceBadge = `<span class="badge badge-dirt">${distanceSurface}</span>`;
                     }
 
-                    // Luodaan mediapainikkeet vain jos linkki on olemassa ja se alkaa http-alulla
                     let mediaButtons = '';
-                    if (racecardUrl && racecardUrl.startsWith('http')) {
-                        mediaButtons += `<a href="${racecardUrl}" target="_blank" class="btn btn-blue">Racecard</a> `;
+                    if (racecardUrl && (racecardUrl.startsWith('http') || racecardUrl.includes('.'))) {
+                        let url = racecardUrl.startsWith('http') ? racecardUrl : 'https://' + racecardUrl;
+                        mediaButtons += `<a href="${url}" target="_blank" class="btn btn-blue">Racecard</a> `;
                     }
-                    if (videoUrl && videoUrl.startsWith('http')) {
-                        mediaButtons += `<a href="${videoUrl}" target="_blank" class="btn btn-red">Video</a> `;
+                    if (videoUrl && (videoUrl.startsWith('http') || videoUrl.includes('.'))) {
+                        let url = videoUrl.startsWith('http') ? videoUrl : 'https://' + videoUrl;
+                        mediaButtons += `<a href="${url}" target="_blank" class="btn btn-red">Video</a> `;
                     }
-                    if (resultsUrl && resultsUrl.startsWith('http')) {
-                        mediaButtons += `<a href="${resultsUrl}" target="_blank" class="btn btn-green">Tulokset</a> `;
+                    if (resultsUrl && (resultsUrl.startsWith('http') || resultsUrl.includes('.'))) {
+                        let url = resultsUrl.startsWith('http') ? resultsUrl : 'https://' + resultsUrl;
+                        mediaButtons += `<a href="${url}" target="_blank" class="btn btn-green">Tulokset</a> `;
                     }
-                    if (earthUrl && earthUrl.startsWith('http')) {
-                        mediaButtons += `<a href="${earthUrl}" target="_blank" class="btn btn-earth">Earth</a>`;
+                    if (earthUrl && (earthUrl.startsWith('http') || earthUrl.includes('.'))) {
+                        let url = earthUrl.startsWith('http') ? earthUrl : 'https://' + earthUrl;
+                        mediaButtons += `<a href="${url}" target="_blank" class="btn btn-earth">Earth</a>`;
                     }
 
-                    // Jos linkkisarakkeissa oli vain pelkkää tekstiä tai tyhjää, laitetaan oletus-Earth jos se puuttui
-                    if (!mediaButtons && earthUrl) {
-                        mediaButtons = `<a href="${earthUrl}" target="_blank" class="btn btn-earth">Earth</a>`;
-                    }
-
-                    // Luodaan uusi HTML-rivi
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td><strong>${raceName}</strong></td>
@@ -397,17 +392,15 @@
                     tableBody.appendChild(tr);
                 }
 
-                // Piilotetaan latausteksti ja näytetään valmis taulukko
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('tableWrapper').style.display = 'block';
 
             } catch (error) {
-                console.error('Virhe ladattaessa tietoja:', error);
-                document.getElementById('loading').innerText = 'Hups! Tietojen lataaminen epäonnistui. Varmista, että Sheets on julkaistu verkkoon CSV-muodossa.';
+                console.error(error);
+                document.getElementById('loading').innerText = 'Tietojen lataus epäonnistui. Varmista, että Google Sheets -jaon asetuksissa on "Kuka tahansa linkin saanut voi katsella".';
             }
         }
 
-        // Hakutoiminnon logiikka
         function filterTable() {
             let input = document.getElementById("tableSearch");
             let filter = input.value.toUpperCase();
@@ -430,7 +423,6 @@
             }
         }
 
-        // Käynnistetään haku sivun latautuessa
         window.onload = fetchRaceData;
     </script>
 </body>
