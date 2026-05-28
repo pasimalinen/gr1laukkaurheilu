@@ -1,46 +1,36 @@
-<!DOCTYPE html>
-<html lang="fi">
-<head>
-    <meta charset="UTF-8">
-    <title>GR1 Laukkaurheilu</title>
-    <style>
-        body { font-family: sans-serif; padding: 20px; background: #f4f4f9; }
-        .card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ddd; }
-        .btn { display: inline-block; padding: 6px 12px; margin-right: 5px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; }
-    </style>
-</head>
-<body>
-    <h1>Laukkaurheilun tilanne</h1>
-    <div id="lista">Ladataan...</div>
-
-    <script>
-        // Käytetään JSON-rajapintaa, joka näkee HYPERLINK-kaavojen sisälle
-        const url = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/gviz/tq?tqx=out:json";
+<script>
+    const url = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/gviz/tq?tqx=out:json";
+    
+    fetch(url)
+    .then(res => res.text())
+    .then(text => {
+        const json = JSON.parse(text.substr(47).slice(0, -2));
+        const container = document.getElementById('lista');
+        container.innerHTML = '';
         
-        fetch(url)
-        .then(res => res.text())
-        .then(text => {
-            const json = JSON.parse(text.substr(47).slice(0, -2));
-            const container = document.getElementById('lista');
-            container.innerHTML = '';
+        json.table.rows.forEach(row => {
+            const c = row.c;
+            if (!c[1]) return;
             
-            json.table.rows.forEach(row => {
-                const c = row.c;
-                if (!c[1]) return; // Jos nimeä ei ole, hypätään yli
-                
-                const name = c[1]?.v || "Nimi puuttuu";
-                
-                // Funktio, joka poimii linkin joko kaavasta (f) tai tekstistä (v)
-                const getL = (idx) => c[idx]?.f ? c[idx].f.match(/HYPERLINK\("([^"]+)"/)?.[1] : c[idx]?.v;
+            // TÄMÄ ON KORJAUS: Etsimme linkkiä "f"-kentästä (kaava) tai "v"-kentästä
+            const extractLink = (col) => {
+                if (!col) return null;
+                // Jos solussa on linkki, se on muodossa HYPERLINK("url"; "teksti")
+                const match = (col.f || "").match(/HYPERLINK\("([^"]+)"/);
+                return match ? match[1] : null;
+            };
 
-                let html = `<div class="card"><h3>${name}</h3>`;
-                if(getL(9)) html += `<a href="${getL(9)}" target="_blank" class="btn">Racecard</a>`;
-                if(getL(11)) html += `<a href="${getL(11)}" target="_blank" class="btn">Video</a>`;
-                if(getL(13)) html += `<a href="${getL(13)}" target="_blank" class="btn">Results</a>`;
-                html += `</div>`;
-                container.innerHTML += html;
-            });
+            const name = c[1]?.v;
+            const racecard = extractLink(c[9]);
+            const video = extractLink(c[11]);
+            const results = extractLink(c[13]);
+
+            let html = `<div class="card"><h3>${name}</h3>`;
+            if(racecard) html += `<a href="${racecard}" target="_blank" class="btn">Racecard</a>`;
+            if(video) html += `<a href="${video}" target="_blank" class="btn">Video</a>`;
+            if(results) html += `<a href="${results}" target="_blank" class="btn">Results</a>`;
+            html += `</div>`;
+            container.innerHTML += html;
         });
-    </script>
-</body>
-</html>
+    });
+</script>
