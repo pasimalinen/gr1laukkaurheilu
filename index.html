@@ -49,7 +49,7 @@
     </header>
     <div class="container">
         <div class="search-box"><input type="text" id="tableSearch" onkeyup="filterTable()" placeholder="Etsi kilpailua, maata, rataa..."></div>
-        <div id="loading">Haetaan ja ladataan 'GR1 2026' välilehden tietoja...</div>
+        <div id="loading">Ladataan tietoja...</div>
         <div class="table-responsive" id="tableWrapper">
             <table id="raceTable">
                 <thead>
@@ -101,89 +101,44 @@
                 if (!response.ok) throw new Error('Verkko-ongelma');
                 const dataText = await response.text();
 
-                if (!dataText || dataText.includes('<!DOCTYPE html>') || dataText.includes('login')) {
-                    document.getElementById('loading').innerHTML = "<span style='color:#ef4444;'>VIRHE: Google ei anna dataa ulos. Varmista välilehden nimi 'GR1 2026'.</span>";
-                    return;
-                }
-
                 const rows = parseCSV(dataText);
                 const tableBody = document.getElementById('tableBody');
                 tableBody.innerHTML = '';
 
-                // Etsitään otsikkorivi
-                let headerIndex = -1;
+                // Aloitetaan lukeminen suoraan otsikkorivin jälkeen (eli oletetaan, että otsikot ovat rivillä 0 tai 1)
+                // Etsitään vain se rivi, jossa oikeasti alkaa data
+                let startRow = 1;
                 for (let r = 0; r < rows.length; r++) {
-                    let rowStr = rows[r].join('').toUpperCase();
-                    if (rowStr.includes('RACE') || rowStr.includes('KILPAILU') || rowStr.includes('COUNTRY') || rowStr.includes('MAA')) {
-                        headerIndex = r;
+                    let firstCell = rows[r][1]?.toUpperCase() || ''; // Katsotaan sarake B (indeksi 1)
+                    if (firstCell.includes('RACE') || firstCell.includes('KILPAILU')) {
+                        startRow = r + 1;
                         break;
                     }
                 }
 
-                if (headerIndex === -1) headerIndex = 0;
-                let headerRow = rows[headerIndex];
-                
-                // Määritetään sarakkeiden paikat dynaamisesti otsikoiden tekstien mukaan
-                let idxRace = -1, idxCountry = -1, idxTrack = -1, idxDate = -1, idxDist = -1, idxAge = -1, idxPurse = -1, idxClass = -1, idxWinner = -1, idxRating = -1;
-                let idxRacecard = -1, idxVideo = -1, idxResults = -1, idxEarth = -1;
-
-                for (let m = 0; m < headerRow.length; m++) {
-                    let hStr = headerRow[m].toUpperCase().trim();
-                    if (hStr.includes("KILPAILU") || hStr.includes("RACE") || hStr.includes("LÄHTÖ")) idxRace = m;
-                    if (hStr.includes("COUNTRY") || hStr.includes("MAA")) idxCountry = m;
-                    if (hStr.includes("TRACK") || hStr.includes("RATA")) idxTrack = m;
-                    if (hStr.includes("DATE") || hStr.includes("PÄIVÄ")) idxDate = m;
-                    if (hStr.includes("TURF") || hStr.includes("DIRT") || hStr.includes("MATKA") || hStr.includes("ALUSTA")) idxDist = m;
-                    if (hStr.includes("AGE") || hStr.includes("IKÄ")) idxAge = m;
-                    if (hStr.includes("PURSE") || hStr.includes("PALKINT")) idxPurse = m;
-                    if (hStr.includes("CLASS") || hStr.includes("LUOKKA")) idxClass = m;
-                    if (hStr.includes("WINNER") || hStr.includes("VOITTAJA")) idxWinner = m;
-                    if (hStr.includes("RATING") || hStr.includes("OR/RPR")) idxRating = m;
-                    
-                    if (hStr.includes("RACECARD") || (hStr.includes("CARD") && !hStr.includes("VIDEO"))) idxRacecard = m;
-                    if (hStr.includes("VIDEO")) idxVideo = m;
-                    if (hStr.includes("RESULT") || hStr.includes("RESULTS") || hStr.includes("TULOS")) idxResults = m;
-                    if (hStr.includes("EARTH") || hStr.includes("GE LINK") || hStr.includes("MAP")) idxEarth = m;
-                }
-
-                // Jos dynaaminen haku jostain syystä ohitti jonkin sarakkeen, käytetään varmuuskopiojärjestystä (huomioiden tyhjä sarake A)
-                if (idxRace === -1) idxRace = 1;      // Sarake B
-                if (idxCountry === -1) idxCountry = 2;  // Sarake C
-                if (idxTrack === -1) idxTrack = 3;      // Sarake D
-                if (idxDate === -1) idxDate = 4;        // Sarake E
-                if (idxDist === -1) idxDist = 5;        // Sarake F
-                if (idxAge === -1) idxAge = 6;          // Sarake G
-                if (idxPurse === -1) idxPurse = 7;      // Sarake H
-                if (idxClass === -1) idxClass = 8;      // Sarake I
-                if (idxWinner === -1) idxWinner = 9;    // Sarake J
-                if (idxRating === -1) idxRating = 10;   // Sarake K
-                
-                if (idxRacecard === -1) idxRacecard = 11; // Sarake L
-                if (idxVideo === -1) idxVideo = 12;       // Sarake M
-                if (idxResults === -1) idxResults = 13;   // Sarake N
-                if (idxEarth === -1) idxEarth = 14;       // Sarake O
-
-                for (let i = headerIndex + 1; i < rows.length; i++) {
+                for (let i = startRow; i < rows.length; i++) {
                     const row = rows[i];
                     
-                    // Varmistetaan rivin aitous tarkistamalla, että Kilpailu-sarakkeessa (idxRace) on tekstiä
-                    const raceName = row[idxRace]?.trim() || '';
+                    // Otetaan tiedot tiukasti ja suoraan oikeilta indekseiltään (A=0, B=1, C=2...)
+                    const raceName = row[1]?.trim() || ''; // Sarake B
+                    
+                    // Jos kilpailun nimi puuttuu, hypätään yli (esim. tyhjät rivit taulukon lopussa)
                     if (!raceName || raceName === "" || raceName === "-") continue;
 
-                    const country = row[idxCountry]?.trim() || '-';
-                    const track = row[idxTrack]?.trim() || '-';
-                    const date = row[idxDate]?.trim() || '-';
-                    const distanceSurface = row[idxDist]?.trim() || '-';
-                    const ageSex = row[idxAge]?.trim() || '-';
-                    const purse = row[idxPurse]?.trim() || '-';
-                    const classGr = row[idxClass]?.trim() || 'GR1';
-                    const winner = row[idxWinner]?.trim() || '-';
-                    const rating = row[idxRating]?.trim() || '-';
+                    const country = row[2]?.trim() || '-';       // Sarake C
+                    const track = row[3]?.trim() || '-';         // Sarake D
+                    const date = row[4]?.trim() || '-';          // Sarake E
+                    const distanceSurface = row[5]?.trim() || '-'; // Sarake F
+                    const ageSex = row[6]?.trim() || '-';         // Sarake G
+                    const purse = row[7]?.trim() || '-';          // Sarake H
+                    const classGr = row[8]?.trim() || 'GR1';      // Sarake I
+                    const winner = row[9]?.trim() || '-';         // Sarake J
+                    const rating = row[10]?.trim() || '-';        // Sarake K
                     
-                    const racecardUrl = row[idxRacecard]?.trim() || '';
-                    const videoUrl = row[idxVideo]?.trim() || '';
-                    const resultsUrl = row[idxResults]?.trim() || '';
-                    const earthUrl = row[idxEarth]?.trim() || '';
+                    const racecardUrl = row[11]?.trim() || '';    // Sarake L
+                    const videoUrl = row[12]?.trim() || '';       // Sarake M
+                    const resultsUrl = row[13]?.trim() || '';     // Sarake N
+                    const earthUrl = row[14]?.trim() || '';       // Sarake O
 
                     let surfaceBadge = distanceSurface;
                     if (distanceSurface.toUpperCase().includes('(T)') || distanceSurface.toUpperCase().includes('TURF')) {
@@ -219,12 +174,8 @@
                     tableBody.appendChild(tr);
                 }
 
-                if(tableBody.children.length === 0) {
-                    document.getElementById('loading').innerHTML = "<span style='color:#f59e0b;'>Data haettiin, mutta rivejä ei saatu jäsenneltyä. Tarkista sarakkeiden otsikot.</span>";
-                } else {
-                    document.getElementById('loading').style.display = 'none';
-                    document.getElementById('tableWrapper').style.display = 'block';
-                }
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('tableWrapper').style.display = 'block';
 
             } catch (error) {
                 document.getElementById('loading').innerText = 'Latausvirhe selaimessa.';
