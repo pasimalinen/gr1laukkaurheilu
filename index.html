@@ -1,16 +1,53 @@
 <!DOCTYPE html>
 <html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <title>GR1 Laukkaurheilu</title>
+    <style>
+        body { background: #0f172a; color: #f8fafc; font-family: sans-serif; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+        .card { background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; }
+        .btn { padding: 6px 10px; border-radius: 4px; text-decoration: none; font-size: 0.7rem; font-weight: bold; color: white; display: inline-block; margin: 2px; }
+    </style>
+</head>
 <body>
-    <h1>Tarkistetaan dataa... (katso Console / F12)</h1>
-    <script>
-        const sheetId = '19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg';
-        const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
+    <h1>GR1 Laukkaurheilu 2026</h1>
+    <div id="grid">Ladataan tietoja...</div>
 
-        fetch(url).then(res => res.text()).then(text => {
-            const json = JSON.parse(text.substr(47).slice(0, -2));
-            console.log("Koko data:", json.table.rows);
-            json.table.rows.forEach((row, i) => {
-                console.log("Rivi " + i + " tiedot:", row.c.map(cell => cell ? (cell.v || cell.f) : "tyhjä"));
+    <script>
+        // Käytetään suoraa CSV-vientiä, mutta luotetaan siihen, että jos
+        // olet liittänyt linkit teksteinä, ne näkyvät tässä.
+        const csvUrl = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/gviz/tq?tqx=out:csv";
+
+        fetch(csvUrl).then(res => res.text()).then(csv => {
+            const lines = csv.split('\n').slice(1);
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            
+            lines.forEach(line => {
+                const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, ''));
+                if(cols.length > 5) {
+                    // Tässä oletetaan, että sarakkeissa 9, 11, 13, 14 on nyt suorat URL-osoitteet
+                    // Jos ne ovat yhä tyhjiä, koodi ei löydä niitä.
+                    const name = cols[1];
+                    const track = cols[3];
+                    const racecard = cols[9];
+                    const video = cols[11];
+                    const results = cols[13];
+                    const earth = cols[14];
+
+                    grid.innerHTML += `
+                        <div class="card">
+                            <h3>${name}</h3>
+                            <p>📍 ${track}</p>
+                            <div>
+                                ${racecard && racecard.length > 5 ? `<a href="${racecard}" target="_blank" class="btn" style="background:#2563eb">Racecard</a>` : ''}
+                                ${video && video.length > 5 ? `<a href="${video}" target="_blank" class="btn" style="background:#dc2626">Video</a>` : ''}
+                                ${results && results.length > 5 ? `<a href="${results}" target="_blank" class="btn" style="background:#16a34a">Results</a>` : ''}
+                                ${earth && earth.length > 5 ? `<a href="${earth}" target="_blank" class="btn" style="background:#059669">Google Earth</a>` : ''}
+                            </div>
+                        </div>`;
+                }
             });
         });
     </script>
