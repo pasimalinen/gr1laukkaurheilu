@@ -74,7 +74,6 @@
     <footer>&copy; 2026 GR1 Kiitolaukkaurheilu</footer>
 
     <script>
-        // Haetaan HTML-muodossa, jotta saadaan solujen takana olevat oikeat linkit mukaan
         const htmlUrl = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/pubhtml?gid=1834958175&single=true";
 
         async function fetchRaceData() {
@@ -83,60 +82,98 @@
                 if (!response.ok) throw new Error('Verkkoyhteysvirhe');
                 const htmlText = await response.text();
 
-                // Luodaan väliaikainen elementti HTML:n parsimiseen
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(htmlText, 'text/html');
-                const rows = doc.querySelectorAll('table tbody tr');
+                const rows = Array.from(doc.querySelectorAll('table tbody tr'));
+
+                // Kartoitetaan sarakkeiden indeksit dynaamisesti otsikkoriviltä
+                let indices = {
+                    race: -1, country: -1, track: -1, date: -1, dist: -1,
+                    age: -1, purse: -1, class: -1, winner: -1, rating: -1,
+                    racecard: -1, video: -1, results: -1, earth: -1
+                };
+
+                // Etsitään otsikkorivi ja sen solut
+                let headerRowIndex = -1;
+                for (let r = 0; r < rows.length; r++) {
+                    const cells = rows[r].querySelectorAll('td, th');
+                    let isHeader = false;
+                    cells.forEach((cell, idx) => {
+                        const txt = cell.textContent.trim().toUpperCase();
+                        if (txt.includes('KILPAILU') || txt === 'RACE') { isHeader = true; indices.race = idx; }
+                        if (txt.includes('MAA') || txt === 'COUNTRY') indices.country = idx;
+                        if (txt.includes('RATA') || txt === 'TRACK') indices.track = idx;
+                        if (txt.includes('PÄIVÄMÄÄRÄ') || txt === 'DATE') indices.date = idx;
+                        if (txt.includes('MATKA') || txt.includes('DISTANCE')) indices.dist = idx;
+                        if (txt.includes('IKÄ') || txt.includes('AGE')) indices.age = idx;
+                        if (txt.includes('PALKINTOPOTTI') || txt === 'PURSE') indices.purse = idx;
+                        if (txt.includes('LUOKKA') || txt === 'CLASS') indices.class = idx;
+                        if (txt.includes('VOITTAJA') || txt === 'WINNER') indices.winner = idx;
+                        if (txt.includes('OR/RPR') || txt === 'RATING') indices.rating = idx;
+                        if (txt === 'RACECARD') indices.racecard = idx;
+                        if (txt === 'VIDEO') indices.video = idx;
+                        if (txt === 'RESULTS') indices.results = idx;
+                        if (txt === 'EARTH' || txt.includes('GOOGLE EARTH')) indices.earth = idx;
+                    });
+                    if (isHeader) {
+                        headerRowIndex = r;
+                        break;
+                    }
+                }
+
+                // Jos dynaaminen haku jostain syystä epäonnistuu täysin, käytetään varmuuskopiota
+                if (indices.race === -1) {
+                    indices = { race: 1, country: 2, track: 3, date: 4, dist: 5, age: 6, purse: 7, class: 8, racecard: 9, winner: 10, video: 11, rating: 12, results: 13, earth: 14 };
+                }
 
                 const tableBody = document.getElementById('tableBody');
                 tableBody.innerHTML = '';
 
-                rows.forEach((row) => {
-                    const cells = row.querySelectorAll('td');
-                    if (cells.length < 12) return; // Ohitetaan liian lyhyet rivit
+                // Käydään rivit läpi otsikkorivin jälkeen
+                const startRow = headerRowIndex !== -1 ? headerRowIndex + 1 : 1;
+                
+                for (let i = startRow; i < rows.length; i++) {
+                    const cells = rows[i].querySelectorAll('td');
+                    if (cells.length === 0) continue;
 
-                    // Google Sheets HTML:ssä ensimmäinen td (indeksi 0) on yleensä rivinumero tai tyhjä A-sarake
-                    // Otetaan tiedot tarkasti paikoiltaan
-                    const raceName = cells[1]?.textContent?.trim() || '';
-                    
-                    // Ohitetaan tyhjät rivit ja otsikkorivit
-                    if (!raceName || raceName === "" || raceName === "-" || raceName.toUpperCase().includes("KILPAILU") || raceName.toUpperCase().includes("RACE")) {
-                        return;
-                    }
+                    const raceName = indices.race !== -1 ? cells[indices.race]?.textContent?.trim() : '';
+                    if (!raceName || raceName === "" || raceName === "-" || raceName.toUpperCase().includes("KILPAILU")) continue;
 
-                    const country = cells[2]?.textContent?.trim() || '-';
-                    const track = cells[3]?.textContent?.trim() || '-';
-                    const date = cells[4]?.textContent?.trim() || '-';
-                    const distanceSurface = cells[5]?.textContent?.trim() || '-';
-                    const ageSex = cells[6]?.textContent?.trim() || '-';
-                    const purse = cells[7]?.textContent?.trim() || '-';
-                    const classGr = cells[8]?.textContent?.trim() || 'GR1';
-                    
-                    // Apufunktio linkin erottamiseen solusta
-                    function getLink(cell) {
+                    const country = indices.country !== -1 ? cells[indices.country]?.textContent?.trim() || '-' : '-';
+                    const track = indices.track !== -1 ? cells[indices.track]?.textContent?.trim() || '-' : '-';
+                    const date = indices.date !== -1 ? cells[indices.date]?.textContent?.trim() || '-' : '-';
+                    const distanceSurface = indices.dist !== -1 ? cells[indices.dist]?.textContent?.trim() || '-' : '-';
+                    const ageSex = indices.age !== -1 ? cells[indices.age]?.textContent?.trim() || '-' : '-';
+                    const purse = indices.purse !== -1 ? cells[indices.purse]?.textContent?.trim() || '-' : '-';
+                    const classGr = indices.class !== -1 ? cells[indices.class]?.textContent?.trim() || 'GR1' : 'GR1';
+                    const winner = indices.winner !== -1 ? cells[indices.winner]?.textContent?.trim() || '-' : '-';
+                    const rating = indices.rating !== -1 ? cells[indices.rating]?.textContent?.trim() || '-' : '-';
+
+                    // Apufunktio linkkien turvalliseen noutamiseen solun takaa
+                    function extractLink(cell) {
                         if (!cell) return '';
+                        // Kokeillaan ensin suoraan ankkuritagia a
                         const anchor = cell.querySelector('a');
                         if (anchor && anchor.getAttribute('href')) {
                             let url = anchor.getAttribute('href');
-                            // Siivotaan Googlesheetsin uudelleenohjauslinkit tarvittaessa
                             if (url.includes('q=')) {
                                 url = url.split('q=')[1].split('&')[0];
                                 url = decodeURIComponent(url);
                             }
                             return url;
                         }
+                        // Jos linkki onkin solussa raakatekstinä
+                        const cellText = cell.textContent.trim();
+                        if (cellText.startsWith('http')) return cellText;
                         return '';
                     }
 
-                    // Sarakkeet: J=Racecard(9), K=Winner(10), L=Video(11), M=OR/RPR(12), N=Results(13), O=Google Earth(14)
-                    const racecardUrl = getLink(cells[9]);
-                    const winner = cells[10]?.textContent?.trim() || '-';
-                    const videoUrl = getLink(cells[11]);
-                    const rating = cells[12]?.textContent?.trim() || '-';
-                    const resultsUrl = getLink(cells[13]);
-                    const earthUrl = getLink(cells[14]);
+                    const racecardUrl = indices.racecard !== -1 ? extractLink(cells[indices.racecard]) : '';
+                    const videoUrl = indices.video !== -1 ? extractLink(cells[indices.video]) : '';
+                    const resultsUrl = indices.results !== -1 ? extractLink(cells[indices.results]) : '';
+                    const earthUrl = indices.earth !== -1 ? extractLink(cells[indices.earth]) : '';
 
-                    // Luodaan alustamerkki (Turf / Dirt)
+                    // Alustamerkintä (Turf / Dirt)
                     let surfaceBadge = distanceSurface;
                     if (distanceSurface.toUpperCase().includes('(T)') || distanceSurface.toUpperCase().includes('TURF')) {
                         surfaceBadge = `<span class="badge badge-turf">${distanceSurface}</span>`;
@@ -144,7 +181,7 @@
                         surfaceBadge = `<span class="badge badge-dirt">${distanceSurface}</span>`;
                     }
 
-                    // Rakennetaan toimivat mediapainikkeet vain jos oikea URL löytyi solun takaa
+                    // Rakennetaan mediapainikkeet
                     let mediaButtons = '';
                     if (racecardUrl) mediaButtons += `<a href="${racecardUrl}" target="_blank" class="btn btn-blue">Racecard</a> `;
                     if (videoUrl) mediaButtons += `<a href="${videoUrl}" target="_blank" class="btn btn-red">Video</a> `;
@@ -167,14 +204,14 @@
                         <td>${mediaButtons}</td>
                     `;
                     tableBody.appendChild(tr);
-                });
+                }
 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('tableWrapper').style.display = 'block';
 
             } catch (error) {
                 console.error(error);
-                document.getElementById('loading').innerText = 'Latausvirhe selaimessa. Varmista, että Sheets on julkaistu verkkoon (Web-sivuna).';
+                document.getElementById('loading').innerText = 'Latausvirhe selaimessa.';
             }
         }
 
