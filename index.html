@@ -74,7 +74,8 @@
     <footer>&copy; 2026 GR1 Kiitolaukkaurheilu</footer>
 
     <script>
-        const csvUrl = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/export?format=csv";
+        // HUOM! Koodi etsii nyt nimenomaan välilehteä nimeltä "GR1 2026"
+        const csvUrl = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/export?format=csv&sheet=GR1+2026";
 
         function parseCSV(text) {
             let lines = []; let row = [""]; let inQuotes = false;
@@ -102,36 +103,61 @@
                 const dataText = await response.text();
 
                 if (!dataText || dataText.includes('<!DOCTYPE html>') || dataText.includes('login')) {
-                    document.getElementById('loading').innerHTML = "<span style='color:#ef4444;'>VIRHE: Muista tehdä Google Sheetsistä: 'Tiedosto' -> 'Jaa' -> 'Julkaise verkkoon'.</span>";
+                    document.getElementById('loading').innerHTML = "<span style='color:#ef4444;'>VIRHE: Google Sheets ei anna dataa ulos. Varmista, että taulukon välilehden nimi alhaalla on täsmälleen 'GR1 2026' ilman heittomerkkejä.</span>";
                     return;
                 }
 
                 const rows = parseCSV(dataText);
+                
+                // Etsitään dynaamisesti se rivi, jolta otsikot alkavat (ohitetaan mahdolliset tyhjät ylärivit)
+                let headerIndex = -1;
+                for(let r=0; r<rows.length; r++) {
+                    if (rows[r].join('').toUpperCase().includes("COUNTRY")) {
+                        headerIndex = r;
+                        break;
+                    }
+                }
+                
+                if (headerIndex === -1) headerIndex = 0; // Oletus jos ei löydy
+
                 const tableBody = document.getElementById('tableBody');
                 tableBody.innerHTML = '';
 
-                // Etsitään sarakkeiden paikat otsikkoriviltä dynaamisesti
-                let headerRow = rows[0];
+                let headerRow = rows[headerIndex];
                 let idxRace = 0, idxCountry = 1, idxTrack = 2, idxDate = 3, idxDist = 4, idxAge = 5, idxPurse = 6, idxClass = 7, idxWinner = 8, idxRating = 9;
                 let idxRacecard = -1, idxVideo = -1, idxResults = -1, idxEarth = -1;
 
+                // Tunnistetaan sarakkeet nimien perusteella
                 for(let m=0; m<headerRow.length; m++) {
                     let hStr = headerRow[m].toUpperCase().trim();
+                    if(hStr.includes("COUNTRY")) idxCountry = m;
+                    if(hStr.includes("LINK")) idxTrack = m;
+                    if(hStr.includes("TURF") || hStr.includes("DIRT")) idxDist = m;
+                    if(hStr.includes("AGE")) idxAge = m;
+                    if(hStr.includes("PURSE")) idxPurse = m;
                     if(hStr.includes("RACECARD")) idxRacecard = m;
+                    if(hStr.includes("WINNER")) idxWinner = m;
                     if(hStr.includes("VIDEO")) idxVideo = m;
-                    if(hStr.includes("TULOKSET") || hStr.includes("RESULTS")) idxResults = m;
+                    if(hStr.includes("OR/RPR")) idxRating = m;
+                    if(hStr.includes("RESULTS")) idxResults = m;
                     if(hStr.includes("EARTH")) idxEarth = m;
                 }
 
-                // Jos dynaaminen haku ei löytänyt, käytetään oletuksia J, K, L, M (10, 11, 12, 13)
-                if(idxRacecard === -1) idxRacecard = 10;
-                if(idxVideo === -1) idxVideo = 11;
+                // Etsitään dynaamisesti oikeat sarakepaikat jos jokin puuttuu
+                if(idxRacecard === -1) idxRacecard = 8;
+                if(idxVideo === -1) idxVideo = 10;
                 if(idxResults === -1) idxResults = 12;
                 if(idxEarth === -1) idxEarth = 13;
+                
+                // Päätellään päivämääräsarake (se on yleensä maun ja alustan välissä)
+                idxDate = idxTrack + 1;
+                // Kilpailun nimi on yleensä ensimmäinen sarake (sarake B datassasi)
+                idxRace = idxCountry - 1;
+                if(idxRace < 0) idxRace = 0;
 
-                for (let i = 1; i < rows.length; i++) {
+                for (let i = headerIndex + 1; i < rows.length; i++) {
                     const row = rows[i];
-                    if (row.length < 3 || !row[0] || row[0].trim() === "" || row[0].toUpperCase().includes("KILPAILU")) continue;
+                    if (row.length < 3 || !row[idxCountry] || row[idxCountry].trim() === "") continue;
 
                     const raceName = row[idxRace]?.trim() || '';
                     const country = row[idxCountry]?.trim() || '';
@@ -166,10 +192,10 @@
                     }
 
                     let rUrl = cleanUrl(racecardUrl); let vUrl = cleanUrl(videoUrl); let resUrl = cleanUrl(resultsUrl); let eUrl = cleanUrl(earthUrl);
-                    if (rUrl) mediaButtons += `<a href="${rUrl}" target="_blank" class="btn btn-blue">Racecard</a> `;
-                    if (vUrl) mediaButtons += `<a href="${vUrl}" target="_blank" class="btn btn-red">Video</a> `;
-                    if (resUrl) mediaButtons += `<a href="${resUrl}" target="_blank" class="btn btn-green">Tulokset</a> `;
-                    if (eUrl) mediaButtons += `<a href="${eUrl}" target="_blank" class="btn btn-earth">Earth</a>`;
+                    if (rUrl && rUrl.toLowerCase() !== 'racecard') mediaButtons += `<a href="${rUrl}" target="_blank" class="btn btn-blue">Racecard</a> `;
+                    if (vUrl && vUrl.toLowerCase() !== 'video') mediaButtons += `<a href="${vUrl}" target="_blank" class="btn btn-red">Video</a> `;
+                    if (resUrl && resUrl.toLowerCase() !== 'results') mediaButtons += `<a href="${resUrl}" target="_blank" class="btn btn-green">Tulokset</a> `;
+                    if (eUrl && eUrl.toLowerCase() !== 'ge link') mediaButtons += `<a href="${eUrl}" target="_blank" class="btn btn-earth">Earth</a>`;
 
                     const tr = document.createElement('tr');
                     tr.innerHTML = `<td><strong>${raceName}</strong></td><td>${country}</td><td>${track}</td><td>${date}</td><td>${surfaceBadge}</td><td>${ageSex}</td><td>${purse}</td><td><span class="badge badge-gr1">${classGr}</span></td><td>${winner}</td><td>${rating}</td><td>${mediaButtons}</td>`;
@@ -178,7 +204,7 @@
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('tableWrapper').style.display = 'block';
             } catch (error) {
-                document.getElementById('loading').innerText = 'Lataus epäonnistui. Varmista Sheetsin "Julkaise verkkoon" -asetus.';
+                document.getElementById('loading').innerText = 'Lataus epäonnistui. Varmista Sheetsin "Julkaise verkkoon" -> "CSV" -asetus.';
             }
         }
 
