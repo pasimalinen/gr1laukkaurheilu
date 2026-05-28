@@ -1,29 +1,24 @@
-<script>
-    fetch("https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/gviz/tq?tqx=out:csv")
-    .then(res => res.text())
-    .then(csv => {
-        const lines = csv.split('\n').slice(1);
-        const grid = document.getElementById('grid');
-        grid.innerHTML = '';
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>GR1 Laukkaurheilu</title>
+</head>
+<body>
+    <h1>Laukkaurheilun tilanne</h1>
+    <div id="lista">Ladataan tietoja...</div>
 
-        lines.forEach(line => {
-            // Tämä regex etsii kaikki linkit koko riviltä
-            const urls = line.match(/(https?:\/\/[^\s",]+)/g) || [];
-            const row = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, ''));
-            
-            if(row.length > 5) {
-                // Tässä luotetaan siihen, että linkit löytyvät riviltä tässä järjestyksessä:
-                // urls[0] = Racecard, urls[1] = Video, urls[2] = Results, urls[3] = Earth
-                grid.innerHTML += `
-                    <div class="card">
-                        <h3>${row[1]}</h3>
-                        <p>📍 ${row[3]}</p>
-                        ${urls[0] ? `<a href="${urls[0]}" target="_blank" class="btn">Racecard</a>` : ''}
-                        ${urls[1] ? `<a href="${urls[1]}" target="_blank" class="btn">Video</a>` : ''}
-                        ${urls[2] ? `<a href="${urls[2]}" target="_blank" class="btn">Results</a>` : ''}
-                        ${urls[3] ? `<a href="${urls[3]}" target="_blank" class="btn">Earth</a>` : ''}
-                    </div>`;
-            }
+    <script>
+        const url = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/gviz/tq?tqx=out:csv";
+        
+        fetch(url)
+        .then(response => response.text())
+        .then(data => {
+            document.getElementById('lista').innerHTML = "Tiedot ladattu. Rivejä löytyi: " + data.split('\n').length;
+        })
+        .catch(err => {
+            document.getElementById('lista').innerHTML = "Virhe ladattaessa: " + err;
         });
-    });
-</script>
+    </script>
+</body>
+</html>
