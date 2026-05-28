@@ -5,16 +5,12 @@
     <title>GR1 Kiitolaukkaurheilu</title>
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --gold: #d4af37; --text: #f8fafc; }
-        body { background: var(--bg); color: var(--text); font-family: sans-serif; padding: 20px; }
-        h1 { color: var(--gold); text-align: center; }
+        body { background: #0f172a; color: var(--text); font-family: sans-serif; padding: 20px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
-        .card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid #334155; }
+        .card { background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; }
         .info { font-size: 0.9rem; margin-bottom: 5px; }
-        
-        /* Racecourse-tekstin dynaamiset värit */
-        .surf-t { color: #22c55e; } /* Vihreä (Turf) */
-        .surf-d { color: #b45309; } /* Ruskea (Dirt) */
-        
+        .surf-t { color: #22c55e; font-weight: bold; } /* T = Vihreä */
+        .surf-d { color: #b45309; font-weight: bold; } /* D = Ruskea */
         .btn { padding: 6px 10px; border-radius: 4px; text-decoration: none; font-size: 0.7rem; font-weight: bold; color: white; margin: 2px; display: inline-block; }
     </style>
 </head>
@@ -23,52 +19,47 @@
     <div id="grid" class="grid">Ladataan tietoja...</div>
 
     <script>
-        const url = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/gviz/tq?tqx=out:json";
+        const csvUrl = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/gviz/tq?tqx=out:csv";
 
-        fetch(url).then(res => res.text()).then(text => {
-            const json = JSON.parse(text.substr(47).slice(0, -2));
-            const rows = json.table.rows;
+        fetch(csvUrl).then(res => res.text()).then(csv => {
+            const lines = csv.split('\n').slice(1);
             const grid = document.getElementById('grid');
             grid.innerHTML = '';
+            
+            lines.forEach(line => {
+                const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, ''));
+                if(cols.length > 5) {
+                    const name = cols[1];      // B
+                    const country = cols[2];   // C
+                    const track = cols[3];     // D
+                    const date = cols[4];      // E
+                    const fCol = cols[5] || "";// F (esim. "T 2400m")
+                    const racecard = cols[9];  // J
+                    const winner = cols[10];   // K
+                    const video = cols[11];    // L
+                    const results = cols[13];  // N
+                    const earth = cols[14];    // O
 
-            rows.forEach(row => {
-                const c = row.c; // c on solujen lista
+                    // Erotetaan tyyppi (eka kirjain) ja matka (loput tekstistä)
+                    const surfaceType = fCol.charAt(0).toUpperCase();
+                    const distance = fCol.substring(1).trim();
+                    const surfaceClass = surfaceType === 'T' ? 'surf-t' : 'surf-d';
 
-                // Perustiedot
-                const name = c[1]?.v || "Kilpailun nimi puuttuu"; // Sarake B
-                const country = c[2]?.v || ""; // Sarake C
-                const racecourse = c[3]?.v || ""; // Sarake D (nimi)
-                const date = c[4]?.v || ""; // Sarake E (Päivämäärä)
-                const surfaceType = c[5]?.v ? c[5].v.toUpperCase() : ""; // Sarake F (T/D)
-                const winnerName = c[10]?.v || ""; // Sarake K (Winner nimi)
-                
-                // Linkit (varmistetaan, että solu on linkki)
-                const getLink = (cell) => (cell?.v && cell.v.toString().startsWith('http')) ? cell.v : null;
-                const racecourseLink = getLink(c[3]); // Linkki D-solusta
-                const racecard = getLink(c[9]); // Sarake J
-                const video = getLink(c[11]); // Sarake L
-                const results = getLink(c[13]); // Sarake N
-                const earth = getLink(c[14]); // Sarake O
-
-                // Määritetään väri-luokka F-sarakkeen mukaan
-                let surfaceClass = '';
-                if (surfaceType === 'T') surfaceClass = 'surf-t';
-                else if (surfaceType === 'D') surfaceClass = 'surf-d';
-
-                grid.innerHTML += `
-                    <div class="card">
-                        <h3>${name}</h3>
-                        <p class="info">📅 Date: ${date}</p>
-                        <p class="info">🌍 Country: ${country}</p>
-                        <p class="info">📍 <span class="${surfaceClass}">Racecourse:</span> ${racecourseLink ? `<a href="${racecourseLink}" target="_blank" style="color:#60a5fa">${racecourse}</a>` : racecourse}</p>
-                        <p class="info">🏆 Winner: ${winnerName}</p>
-                        <div class="btn-row">
-                            ${racecard ? `<a href="${racecard}" target="_blank" class="btn" style="background:#2563eb">Racecard</a>` : ''}
-                            ${video ? `<a href="${video}" target="_blank" class="btn" style="background:#dc2626">Video</a>` : ''}
-                            ${results ? `<a href="${results}" target="_blank" class="btn" style="background:#16a34a">Results</a>` : ''}
-                            ${earth ? `<a href="${earth}" target="_blank" class="btn" style="background:#059669">Google Earth</a>` : ''}
-                        </div>
-                    </div>`;
+                    grid.innerHTML += `
+                        <div class="card">
+                            <h3>${name}</h3>
+                            <p class="info">📅 ${date}</p>
+                            <p class="info">🌍 ${country}</p>
+                            <p class="info">📍 ${track}</p>
+                            <p class="info"><span class="${surfaceClass}">${surfaceType}</span> ${distance} | 🏆 ${winner}</p>
+                            <div class="btn-row">
+                                ${racecard ? `<a href="${racecard}" target="_blank" class="btn" style="background:#2563eb">Racecard</a>` : ''}
+                                ${video ? `<a href="${video}" target="_blank" class="btn" style="background:#dc2626">Video</a>` : ''}
+                                ${results ? `<a href="${results}" target="_blank" class="btn" style="background:#16a34a">Results</a>` : ''}
+                                ${earth ? `<a href="${earth}" target="_blank" class="btn" style="background:#059669">Google Earth</a>` : ''}
+                            </div>
+                        </div>`;
+                }
             });
         });
     </script>
