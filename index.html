@@ -4,43 +4,33 @@
     <meta charset="UTF-8">
     <title>GR1 Kiitolaukkaurheilu</title>
     <style>
-        :root { --bg: #121824; --text: #f8fafc; --accent: #d4af37; }
-        body { background: var(--bg); color: var(--text); font-family: sans-serif; padding: 20px; }
-        table { width: 100%; border-collapse: collapse; background: #1e2640; margin-top: 20px; }
-        td, th { padding: 12px; border: 1px solid #334155; text-align: left; }
-        th { background: #0f172a; color: var(--accent); }
+        body { 
+            background: #121824; 
+            color: #fff; 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            text-align: center;
+        }
+        .taulukko-alue {
+            width: 100%;
+            height: 80vh;
+            margin-top: 20px;
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
     </style>
 </head>
 <body>
     <h1>GR1 Kiitolaukkaurheilu</h1>
-    <div id="status">Ladataan tietoja...</div>
-    <div id="tableContainer"></div>
-
-    <script>
-        const htmlUrl = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/pubhtml";
-
-        async function fetchRaceData() {
-            try {
-                const response = await fetch(htmlUrl);
-                const htmlText = await response.text();
-                const doc = new DOMParser().parseFromString(htmlText, 'text/html');
-                
-                // Haetaan taulukon runko
-                const table = doc.querySelector('table');
-                if (!table) throw new Error("Taulukkoa ei löytynyt.");
-
-                document.getElementById('status').style.display = 'none';
-                document.getElementById('tableContainer').appendChild(table);
-                
-                // Tyylitellään taulukko jälkikäteen
-                table.style.width = "100%";
-                table.style.borderCollapse = "collapse";
-                
-            } catch (e) {
-                document.getElementById('status').innerText = "Virhe: " + e.message;
-            }
-        }
-        window.onload = fetchRaceData;
-    </script>
+    
+    <div class="taulukko-alue">
+        </div>
 </body>
 </html>
