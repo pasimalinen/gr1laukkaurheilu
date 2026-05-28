@@ -8,9 +8,6 @@
         body { background: #0f172a; color: var(--text); font-family: sans-serif; padding: 20px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
         .card { background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; }
-        .info { font-size: 0.9rem; margin-bottom: 5px; }
-        .surf-t { color: #22c55e; font-weight: bold; }
-        .surf-d { color: #b45309; font-weight: bold; }
         .btn { padding: 6px 10px; border-radius: 4px; text-decoration: none; font-size: 0.7rem; font-weight: bold; color: white; margin: 2px; display: inline-block; }
     </style>
 </head>
@@ -19,50 +16,48 @@
     <div id="grid" class="grid">Ladataan tietoja...</div>
 
     <script>
-        // Käytetään JSON-muotoa, joka säilyttää HYPERLINK-kaavojen osoitteet
-        const url = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/gviz/tq?tqx=out:json";
+        // Käytetään suoraa CSV-vientiä ilman JSON-muunnosta
+        const csvUrl = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/gviz/tq?tqx=out:csv";
 
-        fetch(url).then(res => res.text()).then(text => {
-            const json = JSON.parse(text.substr(47).slice(0, -2));
-            const rows = json.table.rows;
+        fetch(csvUrl).then(res => res.text()).then(csv => {
+            const lines = csv.split('\n').slice(1);
             const grid = document.getElementById('grid');
             grid.innerHTML = '';
+            
+            lines.forEach(line => {
+                // Tämä regex etsii linkit jopa silloin, jos ne on upotettu tekstiin
+                const extractLink = (text) => {
+                    const match = text.match(/https?:\/\/[^\s"']+/);
+                    return match ? match[0] : null;
+                };
 
-            rows.forEach(row => {
-                const c = row.c;
+                const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, ''));
                 
-                // Apufunktio: Hakee joko tekstin tai HYPERLINK-kaavan osoitteen
-                const getUrl = (cell) => (cell?.f && cell.f.includes('HYPERLINK')) ? cell.f.split('"')[1] : (cell?.v);
+                if(cols.length > 5) {
+                    const name = cols[1];
+                    const track = cols[3];
+                    const fCol = cols[5] || "";
+                    
+                    const racecard = extractLink(cols[9]);
+                    const video = extractLink(cols[11]);
+                    const results = extractLink(cols[13]);
+                    const earth = extractLink(cols[14]);
 
-                const name = c[1]?.v || "";      // B
-                const country = c[2]?.v || "";   // C
-                const track = c[3]?.v || "";     // D
-                const date = c[4]?.v || "";      // E
-                const fCol = c[5]?.v || "";      // F (T 2400m)
-                
-                const racecard = getUrl(c[9]);   // J
-                const winner = c[10]?.v || "";   // K
-                const video = getUrl(c[11]);     // L
-                const results = getUrl(c[13]);   // N
-                const earth = getUrl(c[14]);     // O
+                    const surfaceType = fCol.charAt(0).toUpperCase();
+                    const distance = fCol.substring(1).trim();
 
-                const surfaceType = fCol.charAt(0).toUpperCase();
-                const distance = fCol.substring(1).trim();
-                const surfaceClass = surfaceType === 'T' ? 'surf-t' : 'surf-d';
-
-                grid.innerHTML += `
-                    <div class="card">
-                        <h3>${name}</h3>
-                        <p class="info">📅 ${date} | 🌍 ${country}</p>
-                        <p class="info">📍 ${track}</p>
-                        <p class="info"><span class="${surfaceClass}">${surfaceType}</span> ${distance} | 🏆 ${winner}</p>
-                        <div class="btn-row">
-                            ${racecard ? `<a href="${racecard}" target="_blank" class="btn" style="background:#2563eb">Racecard</a>` : ''}
-                            ${video ? `<a href="${video}" target="_blank" class="btn" style="background:#dc2626">Video</a>` : ''}
-                            ${results ? `<a href="${results}" target="_blank" class="btn" style="background:#16a34a">Results</a>` : ''}
-                            ${earth ? `<a href="${earth}" target="_blank" class="btn" style="background:#059669">Google Earth</a>` : ''}
-                        </div>
-                    </div>`;
+                    grid.innerHTML += `
+                        <div class="card">
+                            <h3>${name}</h3>
+                            <p>📍 ${surfaceType} ${distance} | ${track}</p>
+                            <div class="btn-row">
+                                ${racecard ? `<a href="${racecard}" target="_blank" class="btn" style="background:#2563eb">Racecard</a>` : ''}
+                                ${video ? `<a href="${video}" target="_blank" class="btn" style="background:#dc2626">Video</a>` : ''}
+                                ${results ? `<a href="${results}" target="_blank" class="btn" style="background:#16a34a">Results</a>` : ''}
+                                ${earth ? `<a href="${earth}" target="_blank" class="btn" style="background:#059669">Google Earth</a>` : ''}
+                            </div>
+                        </div>`;
+                }
             });
         });
     </script>
