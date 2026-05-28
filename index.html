@@ -66,7 +66,7 @@
             <a href="https://www.facebook.com/groups/217800719897775" target="_blank" class="social-btn">Facebook-ryhmä: GR1 Horse Racing</a>
             <div class="contact-info">
                 <div><strong>Asiantuntija:</strong> Pasi Malinen</div>
-                <div><strong>Sähköposti:</strong> pasi.malinen@gmail.com</div>
+                <div><strong>Sähköinto:</strong> pasi.malinen@gmail.com</div>
                 <div><strong>Puh:</strong> 050 568 6782</div>
             </div>
         </div>
@@ -74,7 +74,8 @@
     <footer>&copy; 2026 GR1 Kiitolaukkaurheilu</footer>
 
     <script>
-        const htmlUrl = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/pubhtml?gid=1834958175&single=true";
+        // Yksinkertaistettu HTML-linkki, joka hakee ensimmäisen välilehden suoraan julkaistusta sivusta
+        const htmlUrl = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/pubhtml";
 
         async function fetchRaceData() {
             try {
@@ -86,14 +87,12 @@
                 const doc = parser.parseFromString(htmlText, 'text/html');
                 const rows = Array.from(doc.querySelectorAll('table tbody tr'));
 
-                // Kartoitetaan sarakkeiden indeksit dynaamisesti otsikkoriviltä
                 let indices = {
                     race: -1, country: -1, track: -1, date: -1, dist: -1,
                     age: -1, purse: -1, class: -1, winner: -1, rating: -1,
                     racecard: -1, video: -1, results: -1, earth: -1
                 };
 
-                // Etsitään otsikkorivi ja sen solut
                 let headerRowIndex = -1;
                 for (let r = 0; r < rows.length; r++) {
                     const cells = rows[r].querySelectorAll('td, th');
@@ -121,7 +120,6 @@
                     }
                 }
 
-                // Jos dynaaminen haku jostain syystä epäonnistuu täysin, käytetään varmuuskopiota
                 if (indices.race === -1) {
                     indices = { race: 1, country: 2, track: 3, date: 4, dist: 5, age: 6, purse: 7, class: 8, racecard: 9, winner: 10, video: 11, rating: 12, results: 13, earth: 14 };
                 }
@@ -129,7 +127,6 @@
                 const tableBody = document.getElementById('tableBody');
                 tableBody.innerHTML = '';
 
-                // Käydään rivit läpi otsikkorivin jälkeen
                 const startRow = headerRowIndex !== -1 ? headerRowIndex + 1 : 1;
                 
                 for (let i = startRow; i < rows.length; i++) {
@@ -149,10 +146,8 @@
                     const winner = indices.winner !== -1 ? cells[indices.winner]?.textContent?.trim() || '-' : '-';
                     const rating = indices.rating !== -1 ? cells[indices.rating]?.textContent?.trim() || '-' : '-';
 
-                    // Apufunktio linkkien turvalliseen noutamiseen solun takaa
                     function extractLink(cell) {
                         if (!cell) return '';
-                        // Kokeillaan ensin suoraan ankkuritagia a
                         const anchor = cell.querySelector('a');
                         if (anchor && anchor.getAttribute('href')) {
                             let url = anchor.getAttribute('href');
@@ -162,7 +157,6 @@
                             }
                             return url;
                         }
-                        // Jos linkki onkin solussa raakatekstinä
                         const cellText = cell.textContent.trim();
                         if (cellText.startsWith('http')) return cellText;
                         return '';
@@ -173,7 +167,6 @@
                     const resultsUrl = indices.results !== -1 ? extractLink(cells[indices.results]) : '';
                     const earthUrl = indices.earth !== -1 ? extractLink(cells[indices.earth]) : '';
 
-                    // Alustamerkintä (Turf / Dirt)
                     let surfaceBadge = distanceSurface;
                     if (distanceSurface.toUpperCase().includes('(T)') || distanceSurface.toUpperCase().includes('TURF')) {
                         surfaceBadge = `<span class="badge badge-turf">${distanceSurface}</span>`;
@@ -181,7 +174,6 @@
                         surfaceBadge = `<span class="badge badge-dirt">${distanceSurface}</span>`;
                     }
 
-                    // Rakennetaan mediapainikkeet
                     let mediaButtons = '';
                     if (racecardUrl) mediaButtons += `<a href="${racecardUrl}" target="_blank" class="btn btn-blue">Racecard</a> `;
                     if (videoUrl) mediaButtons += `<a href="${videoUrl}" target="_blank" class="btn btn-red">Video</a> `;
@@ -211,7 +203,7 @@
 
             } catch (error) {
                 console.error(error);
-                document.getElementById('loading').innerText = 'Latausvirhe selaimessa.';
+                document.getElementById('loading').innerHTML = "<span style='color:#ef4444;'>Latausvirhe selaimessa. Varmista Sheetsistä: Tiedosto -> Jaa -> Julkaise verkkoon.</span>";
             }
         }
 
