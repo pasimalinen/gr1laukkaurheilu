@@ -4,11 +4,10 @@
     <meta charset="UTF-8">
     <title>GR1 Kiitolaukkaurheilu</title>
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --gold: #d4af37; --text: #f8fafc; }
-        body { background: #0f172a; color: var(--text); font-family: sans-serif; padding: 20px; }
+        body { background: #0f172a; color: #f8fafc; font-family: sans-serif; padding: 20px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
         .card { background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; }
-        .btn { padding: 6px 10px; border-radius: 4px; text-decoration: none; font-size: 0.7rem; font-weight: bold; color: white; margin: 2px; display: inline-block; }
+        .btn { padding: 6px 10px; border-radius: 4px; text-decoration: none; font-size: 0.7rem; font-weight: bold; color: white; display: inline-block; margin: 2px; }
     </style>
 </head>
 <body>
@@ -16,7 +15,6 @@
     <div id="grid" class="grid">Ladataan tietoja...</div>
 
     <script>
-        // Käytetään suoraa CSV-vientiä ilman JSON-muunnosta
         const csvUrl = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/gviz/tq?tqx=out:csv";
 
         fetch(csvUrl).then(res => res.text()).then(csv => {
@@ -25,36 +23,26 @@
             grid.innerHTML = '';
             
             lines.forEach(line => {
-                // Tämä regex etsii linkit jopa silloin, jos ne on upotettu tekstiin
-                const extractLink = (text) => {
-                    const match = text.match(/https?:\/\/[^\s"']+/);
-                    return match ? match[0] : null;
-                };
-
                 const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, ''));
-                
                 if(cols.length > 5) {
+                    // Tässä haetaan suoraan tekstimuotoiset linkit
                     const name = cols[1];
                     const track = cols[3];
                     const fCol = cols[5] || "";
-                    
-                    const racecard = extractLink(cols[9]);
-                    const video = extractLink(cols[11]);
-                    const results = extractLink(cols[13]);
-                    const earth = extractLink(cols[14]);
-
-                    const surfaceType = fCol.charAt(0).toUpperCase();
-                    const distance = fCol.substring(1).trim();
+                    const racecard = cols[9];
+                    const video = cols[11];
+                    const results = cols[13];
+                    const earth = cols[14];
 
                     grid.innerHTML += `
                         <div class="card">
                             <h3>${name}</h3>
-                            <p>📍 ${surfaceType} ${distance} | ${track}</p>
+                            <p>📍 ${track} (${fCol})</p>
                             <div class="btn-row">
-                                ${racecard ? `<a href="${racecard}" target="_blank" class="btn" style="background:#2563eb">Racecard</a>` : ''}
-                                ${video ? `<a href="${video}" target="_blank" class="btn" style="background:#dc2626">Video</a>` : ''}
-                                ${results ? `<a href="${results}" target="_blank" class="btn" style="background:#16a34a">Results</a>` : ''}
-                                ${earth ? `<a href="${earth}" target="_blank" class="btn" style="background:#059669">Google Earth</a>` : ''}
+                                ${racecard.includes('http') ? `<a href="${racecard}" target="_blank" class="btn" style="background:#2563eb">Racecard</a>` : ''}
+                                ${video.includes('http') ? `<a href="${video}" target="_blank" class="btn" style="background:#dc2626">Video</a>` : ''}
+                                ${results.includes('http') ? `<a href="${results}" target="_blank" class="btn" style="background:#16a34a">Results</a>` : ''}
+                                ${earth.includes('http') ? `<a href="${earth}" target="_blank" class="btn" style="background:#059669">Google Earth</a>` : ''}
                             </div>
                         </div>`;
                 }
