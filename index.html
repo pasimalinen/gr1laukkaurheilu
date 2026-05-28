@@ -6,12 +6,12 @@
     <style>
         body { font-family: sans-serif; padding: 20px; background: #f4f4f9; }
         .card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ddd; }
-        .btn { display: inline-block; padding: 5px 10px; margin-right: 5px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; }
+        .btn { display: inline-block; padding: 6px 12px; margin-right: 5px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; }
     </style>
 </head>
 <body>
     <h1>Laukkaurheilun tilanne</h1>
-    <div id="lista"></div>
+    <div id="lista">Ladataan tietoja...</div>
 
     <script>
         const url = "https://docs.google.com/spreadsheets/d/19VMjcAwo-xSw65m9JiUJ2u0hcgH3eh4DU726nnZDzwg/gviz/tq?tqx=out:csv";
@@ -38,6 +38,9 @@
                     container.innerHTML += html;
                 }
             });
+        })
+        .catch(err => {
+            document.getElementById('lista').innerHTML = "Virhe tietojen lataamisessa.";
         });
     </script>
 </body>
