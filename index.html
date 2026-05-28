@@ -27,7 +27,6 @@
                 const row = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, ''));
                 if(row.length > 5) {
                     const name = row[1];
-                    // Etsitään http-linkit riviltä
                     const urls = line.match(/(https?:\/\/[^\s",]+)/g) || [];
                     
                     let html = `<div class="card"><h3>${name}</h3>`;
